@@ -25,3 +25,12 @@ func MakeHttpRequest(url string, method string) *http.Response{
 
   return resp
 }
+
+func DeconstructJson(i interface {}, resp *http.Response) interface{} {
+   body, err := ioutil.ReadAll(resp.Body)
+   if err != nil {
+     log.Fatal(err)
+   }
+   json.Unmarshal([]byte(body), &i)
+   return i
+}

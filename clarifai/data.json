@@ -1,0 +1,13 @@
+{
+    "inputs": [{
+            "data": {
+                "image": {
+                    "url": "https://static.highsnobiety.com/thumbor/TryIlPu7ePFEI2hlbYPA-A3UqBA=/fit-"
+                },
+                    "concepts": [{
+                        "id": "Pop Smoke",
+                        "value": true
+                    }]
+                }
+            }]
+    }
