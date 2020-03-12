@@ -3,11 +3,18 @@ package api
 import (
   "encoding/json"
   "net/http"
+  "net/url"
   "fmt"
   "bytes"
   "os"
+  "log"
+  "context"
+	"golang.org/x/oauth2/clientcredentials"
+	"github.com/zmb3/spotify"
   "github.com/josiassejod1/train-ml/clarifai/domain/image"
   "github.com/josiassejod1/train-ml/clarifai/domain/model"
+  "github.com/josiassejod1/train-ml/clarifai/domain/spotify"
+ // "github.com/josiassejod1/train-ml/clarifai/domain/mediawiki"
 )
 
 func validateKey() (string) {
@@ -21,7 +28,39 @@ func validateKey() (string) {
   return key
 }
 
-func SendImage(urlstring string, metadata []string) {
+
+func GetWikiImage(search string) {
+  urlStr := url.Values{}
+  urlStr.Set("action", "query")
+  urlStr.Set("prop", "pageimages")
+  urlStr.Set("format", "json")
+  urlStr.Set("piprop", "original")
+  urlStr.Set("titles", search)
+
+  client := &http.Client {}
+ 
+
+  wikiUrl := "https://en.wikipedia.org/w/api.php?" + urlStr.Encode()
+  fmt.Println(wikiUrl)
+  req, _ := http.NewRequest("GET", wikiUrl, nil)
+
+  resp,
+  _ := client.Do(req)
+
+  if (resp.StatusCode >= 200 && resp.StatusCode < 300) {
+    var data map[string] interface {}
+    decoder := json.NewDecoder(resp.Body)
+    err := decoder.Decode( & data)
+    if (err == nil) {
+      fmt.Println("WIKI API Accessed")
+      fmt.Println(data)
+    }
+  } else {
+    fmt.Println(resp.Status);
+  }
+}
+
+func SendImage(urlstring string, metadata []string) string {
   key := validateKey()
   body :=  Image.PostImage {
     Inputs: []Image.Input{
@@ -47,17 +86,70 @@ func SendImage(urlstring string, metadata []string) {
   resp,
   _ := client.Do(req)
 
+  var response = ""
+
   if (resp.StatusCode >= 200 && resp.StatusCode < 300) {
     var data map[string] interface {}
     decoder := json.NewDecoder(resp.Body)
     err := decoder.Decode( & data)
     if (err == nil) {
       fmt.Println("Image Succesfully Uploaded")
-      fmt.Println(data["sid"])
+      response = "Image Successfully Uploaded"
+    }
+  } else {
+    fmt.Println(resp.Status);
+    fmt.Println(resp);
+    response = resp.Status 
+  }
+  return response
+}
+
+func SearchArtistImage(search string) string {
+	config := &clientcredentials.Config{
+		ClientID: os.Getenv("SPOTIFY_ID"),
+		ClientSecret: os.Getenv("SPOTIFY_SECRET"),
+		TokenURL: spotify.TokenURL,
+  }
+  
+  urlStr := url.Values{}
+  urlStr.Set("q", search)
+  urlStr.Set("type", "artist")
+  urlStr.Set("limit", "1")
+
+  client := &http.Client {}
+ 
+  log.Println(urlStr)
+
+  token, err := config.Token(context.Background())
+  if err != nil {
+		log.Fatalf("could't get token: %v", err)
+  }
+  
+  log.Println(token)
+
+  spotifyUrl := "https://api.spotify.com/v1/search?" + urlStr.Encode()
+
+  req, _ := http.NewRequest("GET", spotifyUrl, nil)
+  req.Header.Add("Authorization", "Bearer " + token.AccessToken)
+
+  resp,
+  _ := client.Do(req)
+
+  var url = ""
+
+  if (resp.StatusCode >= 200 && resp.StatusCode < 300) {
+    var data artist.GetArtist
+    decoder := json.NewDecoder(resp.Body)
+    err := decoder.Decode( & data)
+    if (err == nil) {
+      fmt.Println("Spotify API Accessed")
+      fmt.Println(data)
+      url = data.Artists.Items[0].Images[0].URL
     }
   } else {
     fmt.Println(resp.Status);
   }
+  return url
 }
 
 func CreateModel(
@@ -103,7 +195,6 @@ func CreateModel(
     err := decoder.Decode( & data)
     if (err == nil) {
       fmt.Println("Model Successfully Created")
-      fmt.Println(data["sid"])
     }
   } else {
     fmt.Println(resp.Status);
