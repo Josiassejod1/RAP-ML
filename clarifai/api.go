@@ -14,8 +14,13 @@ import (
   "github.com/josiassejod1/train-ml/clarifai/domain/image"
   "github.com/josiassejod1/train-ml/clarifai/domain/model"
   "github.com/josiassejod1/train-ml/clarifai/domain/spotify"
- // "github.com/josiassejod1/train-ml/clarifai/domain/mediawiki"
 )
+
+/*
+  ToDO
+  - Add API That Trains Model
+  - Add API That Deletes Old Models (Refresh)
+*/
 
 func validateKey() (string) {
   key, err := os.LookupEnv("KEY")
