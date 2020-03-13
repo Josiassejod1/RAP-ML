@@ -135,7 +135,7 @@ func SearchArtistImage(search string) string {
   resp,
   _ := client.Do(req)
 
-  var url = ""
+  var url = "unknown.jpg"
 
   if (resp.StatusCode >= 200 && resp.StatusCode < 300) {
     var data artist.GetArtist
@@ -144,7 +144,9 @@ func SearchArtistImage(search string) string {
     if (err == nil) {
       fmt.Println("Spotify API Accessed")
       fmt.Println(data)
-      url = data.Artists.Items[0].Images[0].URL
+      if (len(data.Artists.Items) > 0) {
+        url = data.Artists.Items[0].Images[0].URL
+      }
     }
   } else {
     fmt.Println(resp.Status);
