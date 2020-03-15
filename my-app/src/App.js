@@ -10,6 +10,11 @@ import ToggleButtonGroup from "react-bootstrap/ToggleButtonGroup";
 import validator from 'validator';
 
 class App extends Component {
+
+  constructor(){
+    super()
+    this.input = React.createRef();
+  }
   state = {
     image: "",
     query: "",
@@ -18,6 +23,8 @@ class App extends Component {
     value: 1,
     toggleUploadAlert: false
   };
+
+  
 
   handleUpdate(e) {
     console.log(e.target.value);
@@ -33,6 +40,7 @@ class App extends Component {
   }
 
   handleRadio(e) {
+   this.searchField.value = ""
     this.setState({
       value: e.target.value
     });
@@ -111,38 +119,23 @@ class App extends Component {
 
     let activeSearch;
     let alert2;
-
-    if (this.state.value == 1) {
+      
       activeSearch = (
-        <div className="Center" id="artistSearch">
+        <div className="Center" >
           <input
+            ref={(el) => this.searchField = el}
             autoFocus
             className="form-control"
             style={{ width: "500px", margin: "auto" }}
             type="text"
             size="lg"
-            placeholder="Search for Artist 🎤"
-            onChange={e => this.handleUpdate(e)}
+            placeholder= {this.state.value == 1 ? "Search for Artist 🎤" : "Add Image Url 🔗"}
+            onChange={e => this.state.value== 1 ? this.handleUpdate(e):  this.handleUrl(e)}
             required
           />
         </div>
       );
-    } else {
-      activeSearch = (
-        <div className="Center" id="urlSearch">
-          <input
-            autoFocus
-            className="form-control"
-            style={{ width: "500px", margin: "auto" }}
-            type="text"
-            size="lg"
-            placeholder="Upload Image Url 🔗"
-            onChange={e => this.handleUrl(e)}
-            required
-          />
-        </div>
-      );
-    }
+  
     if (uploadAlert) {
       alert2 = <Alert variant="warning">Image Url is Invalid: [http, https] Needed</Alert>
       setTimeout(() => {
