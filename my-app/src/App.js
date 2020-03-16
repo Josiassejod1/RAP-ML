@@ -42,7 +42,9 @@ class App extends Component {
   handleRadio(e) {
    this.searchField.value = ""
     this.setState({
-      value: e.target.value
+      value: e.target.value,
+      query: "",
+      submitBtn: false
     });
   }
 
@@ -107,6 +109,7 @@ class App extends Component {
         console.log(response);
       })
       .catch(error => console.log(error));
+      this.searchField.value = ""
   }
 
   render() {
@@ -142,13 +145,13 @@ class App extends Component {
         this.setState({
           toggleUploadAlert: false
         });
-      }, 7000);
+      }, 10000);
     }
     if (status != "") {
       if (status == "Image Successfully Uploaded") {
         alert = <Alert variant="success">{status}</Alert>;
       } else {
-        alert = <Alert variant="warning">Opps ! Something went wrong. Try Pasting A URL Instead Using The Image Link Tab.</Alert>;
+        alert = <Alert variant="warning">{status}</Alert>;
       }
       timer = setTimeout(() => {
         this.setState({

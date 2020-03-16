@@ -14,7 +14,13 @@ import (
   "github.com/josiassejod1/train-ml/clarifai/domain/image"
   "github.com/josiassejod1/train-ml/clarifai/domain/model"
   "github.com/josiassejod1/train-ml/clarifai/domain/spotify"
+  "github.com/patrickmn/go-cache"
+  "time"
 )
+
+
+var c = cache.New(5*time.Minute, 10*time.Minute)
+
 
 /*
   ToDO
@@ -66,46 +72,59 @@ func GetWikiImage(search string) {
 }
 
 func SendImage(urlstring string, metadata []string) string {
-  key := validateKey()
-  body :=  Image.PostImage {
-    Inputs: []Image.Input{
-      {
-        Data: Image.Data{
-            Image: Image.Image { Url: urlstring},
-            MetaData: Image.MetaData{
-              List: metadata,
-            },
-        },
-      },
-    },
-  }
-
-  byte, _  := json.Marshal(&body)
-  urlStr := "https://api.clarifai.com/v2/inputs"
-  client := &http.Client {}
-  
-  req, _ := http.NewRequest("POST", urlStr, bytes.NewBuffer(byte))
-  req.Header.Add("Authorization", "Key " + key)
-  req.Header.Add("Content-Type", "application/json")
-  fmt.Println(req)
-  resp,
-  _ := client.Do(req)
-
   var response = ""
+  key := validateKey()
+  c.Set(urlstring, "", cache.NoExpiration)
 
-  if (resp.StatusCode >= 200 && resp.StatusCode < 300) {
-    var data map[string] interface {}
-    decoder := json.NewDecoder(resp.Body)
-    err := decoder.Decode( & data)
-    if (err == nil) {
-      fmt.Println("Image Succesfully Uploaded")
-      response = "Image Successfully Uploaded"
+ 
+  fmt.Println(urlstring + "YERDFAFASDDASC")
+
+    _ , found := c.Get(urlstring)
+    fmt.Println(found)
+    if found {
+     fmt.Println("WTFFFFF ITS FOUND*****")
+      response = "Artist Image Already Used, Upload One Using Url Option"
+    } else {
+      body :=  Image.PostImage {
+        Inputs: []Image.Input{
+          {
+            Data: Image.Data{
+                Image: Image.Image { Url: urlstring},
+                MetaData: Image.MetaData{
+                  List: metadata,
+                },
+            },
+          },
+        },
+      }
+    
+      byte, _  := json.Marshal(&body)
+      urlStr := "https://api.clarifai.com/v2/inputs"
+      client := &http.Client {}
+      
+      req, _ := http.NewRequest("POST", urlStr, bytes.NewBuffer(byte))
+      req.Header.Add("Authorization", "Key " + key)
+      req.Header.Add("Content-Type", "application/json")
+      fmt.Println(req)
+      resp,
+      _ := client.Do(req)
+    
+      if (resp.StatusCode >= 200 && resp.StatusCode < 300) {
+        var data map[string] interface {}
+        decoder := json.NewDecoder(resp.Body)
+        err := decoder.Decode( & data)
+        if (err == nil) {
+          fmt.Println("Image Succesfully Uploaded")
+          response = "Image Successfully Uploaded"
+        }
+      } else {
+        fmt.Println(resp.Status);
+        fmt.Println(resp);
+        response = resp.Status 
+      }
     }
-  } else {
-    fmt.Println(resp.Status);
-    fmt.Println(resp);
-    response = resp.Status 
-  }
+
+ 
   return response
 }
 
