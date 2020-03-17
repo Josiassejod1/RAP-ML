@@ -14,6 +14,7 @@ import (
   "github.com/josiassejod1/train-ml/clarifai/domain/image"
   "github.com/josiassejod1/train-ml/clarifai/domain/model"
   "github.com/josiassejod1/train-ml/clarifai/domain/spotify"
+  "github.com/josiassejod1/train-ml/clarifai/domain/prediction"
   "github.com/patrickmn/go-cache"
   "time"
 )
@@ -39,52 +40,120 @@ func validateKey() (string) {
   return key
 }
 
+func validateModelKey() (string, string) {
+  key, err := os.LookupEnv("MODEL_VERSION_NAME")
+  key2, err2 := os.LookupEnv("MODEL_ID")
 
-func GetWikiImage(search string) {
-  urlStr := url.Values{}
-  urlStr.Set("action", "query")
-  urlStr.Set("prop", "pageimages")
-  urlStr.Set("format", "json")
-  urlStr.Set("piprop", "original")
-  urlStr.Set("titles", search)
+  if !err2 {
+    fmt.Println("Model ID Not Found")
+    os.Exit(1)
+  } else {
+    fmt.Println("Model ID Found")
+  }
 
-  client := &http.Client {}
+
+  if !err {
+    fmt.Println("Model Version Name Not Found")
+    os.Exit(1)
+  } else {
+    fmt.Println("Model Version Found")
+  }
+  return key, key2
+}
+
+
+func GetPrediction(search string) string {
+  key := validateKey()
+  model_version_id, model_id := validateModelKey()
+  var response = ""
+  
+  body := PredictionInput.Format{
+     InputType: []PredictionInput.InputType{
+        {
+          Data: PredictionInput.Data{
+            Image: PredictionInput.Image{
+              Url: search,
+            },
+          },
+        },
+      }, 
+      }
+
+      byte, _  := json.Marshal(&body)
+      urlStr := "https://api.clarifai.com/v2/models/" + model_id + "/versions/" + model_version_id+ "/outputs"
+      client := &http.Client {}
+      
+      req, _ := http.NewRequest("POST", urlStr, bytes.NewBuffer(byte))
+      req.Header.Add("Authorization", "Key " + key)
+      req.Header.Add("Content-Type", "application/json")
+      resp,
+      _ := client.Do(req)
+    
+      if (resp.StatusCode >= 200 && resp.StatusCode < 300) {
+        var data PredictionInput.PredictionResponse
+        decoder := json.NewDecoder(resp.Body)
+        err := decoder.Decode(&data)
+        if (err == nil) {
+          fmt.Println("Image Succesfully Uploaded")
+          fmt.Println(data)
+          response = "Image Successfully Uploaded"
+        }
+      } else {
+        fmt.Println(resp.Status);
+        response = resp.Status 
+      }
+
+      return response
+    }
+
+
+
+// func GetWikiImage(search string) {
+//   urlStr := url.Values{}
+//   urlStr.Set("action", "query")
+//   urlStr.Set("prop", "pageimages")
+//   urlStr.Set("format", "json")
+//   urlStr.Set("piprop", "original")
+//   urlStr.Set("titles", search)
+
+//   client := &http.Client {}
  
 
-  wikiUrl := "https://en.wikipedia.org/w/api.php?" + urlStr.Encode()
-  fmt.Println(wikiUrl)
-  req, _ := http.NewRequest("GET", wikiUrl, nil)
+//   wikiUrl := "https://en.wikipedia.org/w/api.php?" + urlStr.Encode()
+//   fmt.Println(wikiUrl)
+//   req, _ := http.NewRequest("GET", wikiUrl, nil)
 
-  resp,
-  _ := client.Do(req)
+//   resp,
+//   _ := client.Do(req)
 
-  if (resp.StatusCode >= 200 && resp.StatusCode < 300) {
-    var data map[string] interface {}
-    decoder := json.NewDecoder(resp.Body)
-    err := decoder.Decode( & data)
-    if (err == nil) {
-      fmt.Println("WIKI API Accessed")
-      fmt.Println(data)
-    }
-  } else {
-    fmt.Println(resp.Status);
-  }
-}
+//   if (resp.StatusCode >= 200 && resp.StatusCode < 300) {
+//     var data map[string] interface {}
+//     decoder := json.NewDecoder(resp.Body)
+//     err := decoder.Decode( & data)
+//     if (err == nil) {
+//       fmt.Println("WIKI API Accessed")
+//       fmt.Println(data)
+//     }
+//   } else {
+//     fmt.Println(resp.Status);
+//   }
+// }
 
 func SendImage(urlstring string, metadata []string) string {
   var response = ""
   key := validateKey()
-  c.Set(urlstring, "", cache.NoExpiration)
+  
 
- 
-  fmt.Println(urlstring + "YERDFAFASDDASC")
+  //Adds on urls to prevent over use of the model being trained
+  fmt.Println(urlstring)
 
     _ , found := c.Get(urlstring)
     fmt.Println(found)
     if found {
-     fmt.Println("WTFFFFF ITS FOUND*****")
       response = "Artist Image Already Used, Upload One Using Url Option"
+      return response
     } else {
+      c.Set(urlstring, "", cache.NoExpiration)
       body :=  Image.PostImage {
         Inputs: []Image.Input{
           {

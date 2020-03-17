@@ -16,6 +16,7 @@ func main() {
   //api.CreateModel("test", "pika chu", "string", true, false, false)
   //api.SearchArtistImage("Jay-Z")
   //api.GetWikiImage("Jay-Z")
+  http.HandleFunc("/predict", predict)
   http.HandleFunc("/artist", search)
   http.HandleFunc("/upload", upload)
   fmt.Printf("Starting server for testing HTTP")
@@ -24,8 +25,12 @@ func main() {
   }
 }
 
-type myData struct {
+type ArtistData struct {
   MetaData string
+  Image string
+}
+
+type Prediction struct {
   Image string
 }
 
@@ -41,7 +46,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 
   log.Println(r.Body)
   decoder := json.NewDecoder(r.Body)
-  var data myData
+  var data ArtistData
 	err := decoder.Decode(&data)
 	if err != nil {
 		panic(err)
@@ -84,6 +89,31 @@ func search(w http.ResponseWriter, r *http.Request) {
 
   
 }
+
+func predict(w http.ResponseWriter, r *http.Request) {
+  if r.URL.Path != "/predict" {
+    http.Error(w, "prediction not found", http.StatusNotFound)
+    return
+  } 
+
+  w.Header().Set("Access-Control-Allow-Origin", "*")
+  w.Header().Set("Access-Control-Allow-Method", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
+  w.Header().Set("Access-Control-Allow-Header", "Origin, Content-Type, X-Auth-Token")
+
+  keys, ok := r.URL.Query()["image"]
+
+    
+  if !ok || len(keys[0]) < 1 {
+      log.Println("Url Param 'key' is missing")
+      return
+  } else {
+
+    key := keys[0]
+    
+    url := api.GetPrediction(key)
+    fmt.Fprintf(w, url)
+  }
+  }
 
 func init(){
   if err := godotenv.Load();

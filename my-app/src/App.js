@@ -4,15 +4,19 @@ import logo from "./logo.svg";
 import "./App.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Button from "react-bootstrap/Button";
+import Tab from "react-bootstrap/Tab";
 import Alert from "react-bootstrap/Alert";
+import Row from "react-bootstrap/Row";
+import Col from "react-bootstrap/Col";
+import Nav from "react-bootstrap/Nav";
 import ToggleButton from "react-bootstrap/ToggleButton";
 import ToggleButtonGroup from "react-bootstrap/ToggleButtonGroup";
-import validator from 'validator';
+import validator from "validator";
+import { FormControl } from "react-bootstrap";
 
 class App extends Component {
-
-  constructor(){
-    super()
+  constructor() {
+    super();
     this.input = React.createRef();
   }
   state = {
@@ -21,10 +25,39 @@ class App extends Component {
     submitBtn: false,
     uploadStatus: "",
     value: 1,
-    toggleUploadAlert: false
+    toggleUploadAlert: false,
+    selectedFile: null
   };
 
-  
+  fileSelectedHandler = event => {
+    this.setState({
+      selectedFile: event.target.files[0]
+    })
+  }
+
+  fileUploaderHander = () => {
+    const API_URL = `http://localhost:3002/predict`;
+    var encoded =  this.state.selectedFile;
+   var reader = new FileReader();
+    reader.readAsDataURL(encoded);
+    reader.onload = function(e) {
+      var base64 = reader.result.replace(/^data:image\/(.*);base64,/, '')
+    axios
+      .get(`${API_URL}`, {
+        params: {
+          image: base64
+        },
+        onUploadProgress: ProgressEvent => {
+          console.log("Upload Progress: " + ((ProgressEvent.loaded / ProgressEvent.total) * 100))
+        }
+      }).then(response => {
+        console.log(response);
+      })
+      .catch(error => console.log(error));
+      
+   }
+
+  }
 
   handleUpdate(e) {
     console.log(e.target.value);
@@ -40,7 +73,7 @@ class App extends Component {
   }
 
   handleRadio(e) {
-   this.searchField.value = ""
+    this.searchField.value = "";
     this.setState({
       value: e.target.value,
       query: "",
@@ -60,7 +93,7 @@ class App extends Component {
       .then(response => {
         this.setState({
           image: response.data,
-          submitBtn: true,
+          submitBtn: true
         });
         console.log(response.data);
       })
@@ -68,21 +101,24 @@ class App extends Component {
   }
 
   validateURL(url) {
-    var sanatizedUrl = url.toString()
-    console.log(sanatizedUrl)
-    if (validator.isURL(sanatizedUrl, {
-      protocols: ['http', 'https'], 
-      require_protocol:true,
-      allow_underscores: true})) {
+    var sanatizedUrl = url.toString();
+    console.log(sanatizedUrl);
+    if (
+      validator.isURL(sanatizedUrl, {
+        protocols: ["http", "https"],
+        require_protocol: true,
+        allow_underscores: true
+      })
+    ) {
       this.setState({
         image: sanatizedUrl,
-        submitBtn: true,
-      })
+        submitBtn: true
+      });
     } else {
-      console.log("NOPE")
+      console.log("NOPE");
       this.setState({
         toggleUploadAlert: true
-      })
+      });
     }
   }
 
@@ -109,7 +145,7 @@ class App extends Component {
         console.log(response);
       })
       .catch(error => console.log(error));
-      this.searchField.value = ""
+    this.searchField.value = "";
   }
 
   render() {
@@ -122,25 +158,33 @@ class App extends Component {
 
     let activeSearch;
     let alert2;
-      
-      activeSearch = (
-        <div className="Center" >
-          <input
-            ref={(el) => this.searchField = el}
-            autoFocus
-            className="form-control"
-            style={{ width: "500px", margin: "auto" }}
-            type="text"
-            size="lg"
-            placeholder= {this.state.value == 1 ? "Search for Artist 🎤" : "Add Image Url 🔗"}
-            onChange={e => this.state.value== 1 ? this.handleUpdate(e):  this.handleUrl(e)}
-            required
-          />
-        </div>
-      );
-  
+
+    activeSearch = (
+      <div className="Center">
+        <input
+          ref={el => (this.searchField = el)}
+          autoFocus
+          className="form-control"
+          style={{ width: "500px", margin: "auto" }}
+          type="text"
+          size="lg"
+          placeholder={
+            this.state.value == 1 ? "Search for Artist 🎤" : "Add Image Url 🔗"
+          }
+          onChange={e =>
+            this.state.value == 1 ? this.handleUpdate(e) : this.handleUrl(e)
+          }
+          required
+        />
+      </div>
+    );
+
     if (uploadAlert) {
-      alert2 = <Alert variant="warning">Image Url is Invalid: [http, https] Needed</Alert>
+      alert2 = (
+        <Alert variant="warning">
+          Image Url is Invalid: [http, https] Needed
+        </Alert>
+      );
       setTimeout(() => {
         this.setState({
           toggleUploadAlert: false
@@ -175,7 +219,11 @@ class App extends Component {
       );
       upload = (
         <Button
-          onClick={e => this.state.value == 1 ? this.uploadImage(this.state.query) : this.uploadImage(this.state.image)}
+          onClick={e =>
+            this.state.value == 1
+              ? this.uploadImage(this.state.query)
+              : this.uploadImage(this.state.image)
+          }
           disabled={this.state.image == "unknown.jpg"}
         >
           Upload
@@ -186,29 +234,83 @@ class App extends Component {
       upload = <div></div>;
     }
     return (
-      <div className="App">
-        <header className="App-header">
-          {alert2}
-          {alert}
-          {activeSearch}
+      <Tab.Container id="left-tabs-example" defaultActiveKey="first">
+        <Row>
+          <Col sm={3}>
+            <Nav  variant="pills" className="flex-column">
+              <Nav.Item>
+                <Nav.Link eventKey="first">Train</Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link eventKey="second">Prediction</Nav.Link>
+              </Nav.Item>
+            </Nav>
+          </Col>
 
-          <ToggleButtonGroup type="radio" name="options" onClick={e => this.handleRadio(e)}>
-            <ToggleButton variant='dark' value={1}>Keyword Search</ToggleButton>
-            <ToggleButton variant='light' value={2}>Image Link</ToggleButton>
-          </ToggleButtonGroup>
-          
-          {img}
-          <br/>
-          <div style={{ display: "inline", margin: "50px" }}>
-            {upload}
-            <Button variant="success" type="button" 
-            onClick={e => this.state.value == 1 ? this.getInfo(e) : this.validateURL(this.state.image)}
-            disabled={this.state.query === '' && this.state.image === ''}>
-              Submit
-            </Button>
-          </div>
-        </header>
-      </div>
+          <Col sm={9}>
+            <Tab.Content>
+              <Tab.Pane eventKey="first">
+                <div className="App">
+                  <header className="App-header">
+                    {alert2}
+                    {alert}
+                    {activeSearch}
+
+                    <ToggleButtonGroup
+                      type="radio"
+                      name="options"
+                      onClick={e => this.handleRadio(e)}
+                    >
+                      <ToggleButton variant="dark" value={1}>
+                        Keyword Search
+                      </ToggleButton>
+                      <ToggleButton variant="light" value={2}>
+                        Image Link
+                      </ToggleButton>
+                    </ToggleButtonGroup>
+
+                    {img}
+                    <br />
+                    <div style={{ display: "inline", margin: "50px" }}>
+                      {upload}
+                      <Button
+                        variant="success"
+                        type="button"
+                        onClick={e =>
+                          this.state.value == 1
+                            ? this.getInfo(e)
+                            : this.validateURL(this.state.image)
+                        }
+                        disabled={
+                          this.state.query === "" && this.state.image === ""
+                        }
+                      >
+                        Submit
+                      </Button>
+                    </div>
+                  </header>
+                </div>
+              </Tab.Pane>
+              <Tab.Pane eventKey="second">
+              <div className="App">
+                  <header className="App-header">
+                    <div style={{backgroundColor: "gray"}}>
+                    <input  
+                    type="file" 
+                    style={{display: 'none'}}
+                    onChange={this.fileSelectedHandler}
+                    ref={fileInput => this.fileInput = fileInput }
+                    />
+                      <Button onClick={() => this.fileInput.click()} variant="success">Pick File</Button>
+                      <Button onClick={this.fileUploaderHander} variant="success">Upload</Button>
+                    </div>
+                  </header>
+                </div>
+              </Tab.Pane>
+            </Tab.Content>
+          </Col>
+        </Row>
+      </Tab.Container>
     );
   }
 }
