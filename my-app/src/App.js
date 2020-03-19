@@ -20,6 +20,7 @@ class App extends Component {
     this.input = React.createRef();
     this.boundBox = this.boundBox.bind(this);
     this.drawBox = this.drawBox.bind(this);
+    this.producePrediction = this.producePrediction.bind(this);
   }
   state = {
     image: "",
@@ -34,7 +35,8 @@ class App extends Component {
       height: '',
       clarifaiFaces: new Array(0),
       realFaces: new Array(0),
-      blob: ''
+      blob: '',
+      predictions: new Array(0)
     }
   };
 
@@ -44,21 +46,31 @@ class App extends Component {
       var ctx = canvas.getContext("2d")
       ctx.clearRect(0,0, canvas.width, canvas.height)
       canvas.style.backgroundImage = ""
-    } 
+    }
+
+    var selectedFile = event.target.files[0]
     this.setState({
-      selectedFile: event.target.files[0]
+      selectedFile: selectedFile,
     })
+
+    var reader = new FileReader();
+    reader.readAsDataURL(selectedFile);
+    if (selectedFile != null) {
+      reader.onload = () => {
+        this.state.imageDetails.blob = reader.result
+        canvas.style.backgroundImage = `url(${reader.result})`
+        canvas.style.backgroundSize = 'contain'
+        canvas.style.backgroundRepeat = 'no-repeat'
+      }
+    }
   }
 
   fileUploaderHander = () => {
     const API_URL = `http://localhost:3002/predict`;
     var encoded =  this.state.selectedFile;
-   var reader = new FileReader();
+    var blob = this.state.imageDetails.blob
    if(encoded != null) {
-    reader.readAsDataURL(encoded);
-    reader.onload = () => {
-      var base64 = reader.result.replace(/^data:image\/(.*);base64,/, '')
-      this.state.imageDetails.blob = reader.result
+      var base64 = blob.replace(/^data:image\/(.*);base64,/, '')
       axios
       .get(`${API_URL}`, {
         params: {
@@ -69,11 +81,9 @@ class App extends Component {
         }
       }).then(response => {
         console.log(response);
-        this.boundBox(reader.result, response)
+        this.boundBox(blob, response)
       })
       .catch(error => console.log(error));
-      
-   }
    }
   }
 
@@ -106,9 +116,11 @@ class App extends Component {
     var width = this.state.imageDetails.width
     var height =  this.state.imageDetails.height
     var imageDetails = this.state.imageDetails
-    canvas.style.backgroundImage = `url(${imageDetails.blob})`
     canvas.style.backgroundSize = 'contain'
     canvas.style.backgroundRepeat = 'no-repeat'
+    canvas.width = width
+    canvas.height = height
+   
 
 
     var box;
@@ -119,22 +131,24 @@ class App extends Component {
       console.log(imageDetails.clarifaiFaces[i].right_col)
       console.log(imageDetails.clarifaiFaces[i].bottom_row)
       box = {
-        x: (imageDetails.clarifaiFaces[i].left_col * parseInt(width)),
-        y: (imageDetails.clarifaiFaces[i].top_row * parseInt(height)),
-        w: (imageDetails.clarifaiFaces[i].right_col * parseInt(width)) - (imageDetails.clarifaiFaces[i].left_col * parseInt(width)),
-        h: (imageDetails.clarifaiFaces[i].bottom_row * parseInt(height)) - (imageDetails.clarifaiFaces[i].top_row * parseInt(height))
+        x: (imageDetails.clarifaiFaces[i].left_col * parseInt(canvas.width)),
+        y: (imageDetails.clarifaiFaces[i].top_row * parseInt(canvas.height)),
+        w: (imageDetails.clarifaiFaces[i].right_col * parseInt(canvas.width)) - (imageDetails.clarifaiFaces[i].left_col * parseInt(canvas.width)),
+        h: (imageDetails.clarifaiFaces[i].bottom_row * parseInt(canvas.height)) - (imageDetails.clarifaiFaces[i].top_row * parseInt(canvas.height))
       }
 
   
         var ctx = canvas.getContext("2d")
-        ctx.width = width
-        ctx.height = height
-        ctx.drawImage(img, 0,0, width, height)
+       // ctx.style.backgroundImage = 
+        // ctx.width = width
+        // ctx.height = height
+        //ctx.drawImage(img, 0,0, width, height)
+       
   
         ctx.textBaseline = "top"
         imageDetails.realFaces.push(box)
         ctx.font = (box.w * 1.4) + "px monospace";
-        ctx.fillText("🚀", box.x - (box.w / 5), box.y - (box.h/4));
+        ctx.fillText("🎤", box.x - (box.w / 5), box.y - (box.h/4));
       
    
     
@@ -147,18 +161,44 @@ class App extends Component {
 
   }
 
+  producePrediction(data){
+    console.log(data)
+    var artist = new Array(0);
+    if (data != null) {
+      var prediction =  data
+      console.log(prediction)
+      for (var i = 0; i < prediction.length; i++) {
+        var concepts = prediction[i].data.concepts
+        console.log(concepts)
+        for(var j = 0; j < concepts.length; j++) {
+          console.log(concepts[i][j])
+          artist.push({
+            name: concepts[j].name,
+            value: concepts[j].value
+          })
+        }
+      }
+      console.log(artist)
+      this.state.imageDetails.predictions = artist
+    } else {
+      console.log("Data empty 🙁")
+    }
+  }
+
+
   
   
   boundBox(base64, res){
     var prediction =  document.getElementById("predictionImage")
     prediction.src = base64
-    prediction.width = "250"
-    prediction.height = "250"
+   
+   
 
-    this.state.imageDetails.width = "250"
-    this.state.imageDetails.height= "250"
+    this.state.imageDetails.width =  prediction.width 
+    this.state.imageDetails.height=  prediction.height
 
     var data = res.data.outputs[0].data.regions;
+    this.producePrediction(data)
     console.log(data)
     var regionBox = new Array(0);
 
@@ -393,7 +433,7 @@ class App extends Component {
                   <header className="App-header">
                     <div>
                     <img id="predictionImage" src=""></img>
-                    <canvas id="canvas" width="250" height="250"></canvas>
+                    <canvas id="canvas"></canvas>
                     </div>
                     <div style={{backgroundColor: "gray"}}>
                     <input  
