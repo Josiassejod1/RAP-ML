@@ -110,10 +110,11 @@ func predict(w http.ResponseWriter, r *http.Request) {
 
     key := keys[0]
     
-    url := api.GetPrediction(key)
-    fmt.Fprintf(w, url)
+    data := api.GetPrediction(key)
+    fmt.Fprintf(w, data)
   }
-  }
+  
+}
 
 func init(){
   if err := godotenv.Load();

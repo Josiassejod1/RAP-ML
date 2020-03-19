@@ -18,6 +18,8 @@ class App extends Component {
   constructor() {
     super();
     this.input = React.createRef();
+    this.boundBox = this.boundBox.bind(this);
+    this.drawBox = this.drawBox.bind(this);
   }
   state = {
     image: "",
@@ -26,10 +28,23 @@ class App extends Component {
     uploadStatus: "",
     value: 1,
     toggleUploadAlert: false,
-    selectedFile: null
+    selectedFile: null,
+    imageDetails: {
+      width: '',
+      height: '',
+      clarifaiFaces: new Array(0),
+      realFaces: new Array(0),
+      blob: ''
+    }
   };
 
   fileSelectedHandler = event => {
+    var canvas = document.getElementById('canvas')
+    if (canvas.style.backgroundImage !== null) {
+      var ctx = canvas.getContext("2d")
+      ctx.clearRect(0,0, canvas.width, canvas.height)
+      canvas.style.backgroundImage = ""
+    } 
     this.setState({
       selectedFile: event.target.files[0]
     })
@@ -39,10 +54,12 @@ class App extends Component {
     const API_URL = `http://localhost:3002/predict`;
     var encoded =  this.state.selectedFile;
    var reader = new FileReader();
+   if(encoded != null) {
     reader.readAsDataURL(encoded);
-    reader.onload = function(e) {
+    reader.onload = () => {
       var base64 = reader.result.replace(/^data:image\/(.*);base64,/, '')
-    axios
+      this.state.imageDetails.blob = reader.result
+      axios
       .get(`${API_URL}`, {
         params: {
           image: base64
@@ -52,11 +69,12 @@ class App extends Component {
         }
       }).then(response => {
         console.log(response);
+        this.boundBox(reader.result, response)
       })
       .catch(error => console.log(error));
       
    }
-
+   }
   }
 
   handleUpdate(e) {
@@ -81,6 +99,84 @@ class App extends Component {
     });
   }
 
+  drawBox(){
+    var canvas = document.getElementById("canvas")
+    var img = document.getElementById("predictionImage")
+    img.style.display = 'none'
+    var width = this.state.imageDetails.width
+    var height =  this.state.imageDetails.height
+    var imageDetails = this.state.imageDetails
+    canvas.style.backgroundImage = `url(${imageDetails.blob})`
+    canvas.style.backgroundSize = 'contain'
+    canvas.style.backgroundRepeat = 'no-repeat'
+
+
+    var box;
+
+    for(var i=0; i<imageDetails.clarifaiFaces.length; i++) {  
+      console.log(imageDetails.clarifaiFaces[i].left_col)
+      console.log(imageDetails.clarifaiFaces[i].top_row)
+      console.log(imageDetails.clarifaiFaces[i].right_col)
+      console.log(imageDetails.clarifaiFaces[i].bottom_row)
+      box = {
+        x: (imageDetails.clarifaiFaces[i].left_col * parseInt(width)),
+        y: (imageDetails.clarifaiFaces[i].top_row * parseInt(height)),
+        w: (imageDetails.clarifaiFaces[i].right_col * parseInt(width)) - (imageDetails.clarifaiFaces[i].left_col * parseInt(width)),
+        h: (imageDetails.clarifaiFaces[i].bottom_row * parseInt(height)) - (imageDetails.clarifaiFaces[i].top_row * parseInt(height))
+      }
+
+  
+        var ctx = canvas.getContext("2d")
+        ctx.width = width
+        ctx.height = height
+        ctx.drawImage(img, 0,0, width, height)
+  
+        ctx.textBaseline = "top"
+        imageDetails.realFaces.push(box)
+        ctx.font = (box.w * 1.4) + "px monospace";
+        ctx.fillText("🚀", box.x - (box.w / 5), box.y - (box.h/4));
+      
+   
+    
+    }
+
+   
+
+    
+
+
+  }
+
+  
+  
+  boundBox(base64, res){
+    var prediction =  document.getElementById("predictionImage")
+    prediction.src = base64
+    prediction.width = "250"
+    prediction.height = "250"
+
+    this.state.imageDetails.width = "250"
+    this.state.imageDetails.height= "250"
+
+    var data = res.data.outputs[0].data.regions;
+    console.log(data)
+    var regionBox = new Array(0);
+
+    if (data !== null) {
+      for (var i = 0; i < data.length; i++) {
+        regionBox.push(data[i].region_info.bounding_box)
+      }
+      this.state.imageDetails.clarifaiFaces = regionBox 
+
+      this.drawBox()
+
+    } else {
+      console.log("error")
+    }
+
+   
+  }
+
   getInfo() {
     const API_URL = `http://localhost:3002/artist`;
 
@@ -100,6 +196,7 @@ class App extends Component {
       .catch(error => console.log(error));
   }
 
+ 
   validateURL(url) {
     var sanatizedUrl = url.toString();
     console.log(sanatizedUrl);
@@ -294,6 +391,10 @@ class App extends Component {
               <Tab.Pane eventKey="second">
               <div className="App">
                   <header className="App-header">
+                    <div>
+                    <img id="predictionImage" src=""></img>
+                    <canvas id="canvas" width="250" height="250"></canvas>
+                    </div>
                     <div style={{backgroundColor: "gray"}}>
                     <input  
                     type="file" 

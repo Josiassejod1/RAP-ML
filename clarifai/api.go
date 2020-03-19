@@ -64,7 +64,7 @@ func validateModelKey() (string, string) {
 
 func GetPrediction(search string) string {
   key := validateKey()
-  model_version_id, model_id := validateModelKey()
+  _, model_id := validateModelKey()
   var response = ""
   
   body := PredictionInput.Format{
@@ -80,7 +80,7 @@ func GetPrediction(search string) string {
       }
 
       byte, _  := json.Marshal(&body)
-      urlStr := "https://api.clarifai.com/v2/models/" + model_id + "/versions/" + model_version_id+ "/outputs"
+      urlStr := "https://api.clarifai.com/v2/models/" + model_id + "/outputs"
       client := &http.Client {}
       
       req, _ := http.NewRequest("POST", urlStr, bytes.NewBuffer(byte))
@@ -95,8 +95,11 @@ func GetPrediction(search string) string {
         err := decoder.Decode(&data)
         if (err == nil) {
           fmt.Println("Image Succesfully Uploaded")
-          fmt.Println(data)
-          response = "Image Successfully Uploaded"
+          json, err := json.Marshal(data)
+          if err != nil {
+              response = "JSON Not Formatted Correctly"
+          } 
+          response = string(json)
         }
       } else {
         fmt.Println(resp.Status);
