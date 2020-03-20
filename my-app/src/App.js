@@ -5,6 +5,7 @@ import "./App.css";
 import "bootstrap/dist/css/bootstrap.min.css";
 import Button from "react-bootstrap/Button";
 import Tab from "react-bootstrap/Tab";
+import Table from "react-bootstrap/Table";
 import Alert from "react-bootstrap/Alert";
 import Row from "react-bootstrap/Row";
 import Col from "react-bootstrap/Col";
@@ -45,7 +46,18 @@ class App extends Component {
     if (canvas.style.backgroundImage !== null) {
       var ctx = canvas.getContext("2d")
       ctx.clearRect(0,0, canvas.width, canvas.height)
+      ctx.beginPath();
       canvas.style.backgroundImage = ""
+      this.setState({
+        imageDetails: {
+          width: '',
+          height: '',
+          clarifaiFaces: new Array(0),
+          realFaces: new Array(0),
+          blob: '',
+          predictions: new Array(0)
+        }
+      })
     }
 
     var selectedFile = event.target.files[0]
@@ -118,8 +130,8 @@ class App extends Component {
     var imageDetails = this.state.imageDetails
     canvas.style.backgroundSize = 'contain'
     canvas.style.backgroundRepeat = 'no-repeat'
-    canvas.width = width
-    canvas.height = height
+    canvas.width = img.width
+    canvas.height = img.height
    
 
 
@@ -137,28 +149,12 @@ class App extends Component {
         h: (imageDetails.clarifaiFaces[i].bottom_row * parseInt(canvas.height)) - (imageDetails.clarifaiFaces[i].top_row * parseInt(canvas.height))
       }
 
-  
         var ctx = canvas.getContext("2d")
-       // ctx.style.backgroundImage = 
-        // ctx.width = width
-        // ctx.height = height
-        //ctx.drawImage(img, 0,0, width, height)
-       
-  
         ctx.textBaseline = "top"
         imageDetails.realFaces.push(box)
         ctx.font = (box.w * 1.4) + "px monospace";
-        ctx.fillText("🎤", box.x - (box.w / 5), box.y - (box.h/4));
-      
-   
-    
+        ctx.fillText("⭕️", box.x - (box.w / 5), box.y - (box.h/4));
     }
-
-   
-
-    
-
-
   }
 
   producePrediction(data){
@@ -174,12 +170,18 @@ class App extends Component {
           console.log(concepts[i][j])
           artist.push({
             name: concepts[j].name,
-            value: concepts[j].value
+            value: concepts[j].value,
+            region: i + 1
           })
         }
       }
       console.log(artist)
-      this.state.imageDetails.predictions = artist
+      this.setState(prevState => ({
+       imageDetails:{
+        ...prevState.state,
+        predictions: artist,
+       }
+      }))
     } else {
       console.log("Data empty 🙁")
     }
@@ -198,7 +200,7 @@ class App extends Component {
     this.state.imageDetails.height=  prediction.height
 
     var data = res.data.outputs[0].data.regions;
-    this.producePrediction(data)
+    
     console.log(data)
     var regionBox = new Array(0);
 
@@ -209,7 +211,7 @@ class App extends Component {
       this.state.imageDetails.clarifaiFaces = regionBox 
 
       this.drawBox()
-
+      this.producePrediction(data)
     } else {
       console.log("error")
     }
@@ -292,7 +294,7 @@ class App extends Component {
     let status = this.state.uploadStatus;
     let timer = null;
     let uploadAlert = this.state.toggleUploadAlert;
-
+    let outcomes;
     let activeSearch;
     let alert2;
 
@@ -316,6 +318,7 @@ class App extends Component {
       </div>
     );
 
+ 
     if (uploadAlert) {
       alert2 = (
         <Alert variant="warning">
@@ -370,6 +373,42 @@ class App extends Component {
       img = <img></img>;
       upload = <div></div>;
     }
+
+    var variant = [
+      'primary',
+      'dark',
+    ]
+
+    var artists = this.state.imageDetails.predictions.map((artist, i)=>{
+      return(
+          <tr variant={variant[i%2]} key={i}>
+            <td>{artist.name}</td>
+            <td>{artist.value}</td>
+            <td>{artist.region}</td>
+          </tr>
+          )
+      });
+
+      if (this.state.imageDetails.predictions.length > 0){
+        outcomes =  <Table variant="dark" striped={true} responsive="md" bordered={true}>
+                      <caption style={{padding: '10px', position: 'bottom'}}>
+                        Provides Face Detection Value of Artist
+                        </caption>
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                         <th>Probability Value</th>
+                         <th>Face Detected</th>
+                        </tr>
+                      </thead>
+                      <tbody striped={true}>
+                      {artists}
+                      </tbody>
+                      </Table>
+      } else {
+        outcomes =  <div></div>
+      }
+  
     return (
       <Tab.Container id="left-tabs-example" defaultActiveKey="first">
         <Row>
@@ -435,7 +474,7 @@ class App extends Component {
                     <img id="predictionImage" src=""></img>
                     <canvas id="canvas"></canvas>
                     </div>
-                    <div style={{backgroundColor: "gray"}}>
+                    <div>
                     <input  
                     type="file" 
                     style={{display: 'none'}}
@@ -444,6 +483,10 @@ class App extends Component {
                     />
                       <Button onClick={() => this.fileInput.click()} variant="success">Pick File</Button>
                       <Button onClick={this.fileUploaderHander} variant="success">Upload</Button>
+                      <br/>
+                      <div>
+                        {outcomes}
+                      </div>
                     </div>
                   </header>
                 </div>
