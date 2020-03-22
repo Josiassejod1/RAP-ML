@@ -83,7 +83,6 @@ func GetPrediction(search string) string {
       urlStr := "https://api.clarifai.com/v2/models/" + model_id + "/outputs"
       client := &http.Client {}
       
-      
       req, _ := http.NewRequest("POST", urlStr, bytes.NewBuffer(byte))
       req.Header.Add("Authorization", "Key " + key)
       req.Header.Add("Content-Type", "application/json")
